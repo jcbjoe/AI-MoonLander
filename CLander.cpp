@@ -288,10 +288,53 @@ bool CLander::TestForImpact(vector<SPoint> &ship)
 //	level and its angle at touchdown.
 //-------------------------------------------------------------------
 
+void CLander::CalculateFitness()
+{
+
+	//calculate distance from pad
+	double DistFromPad = fabs(m_vPadPos.x - m_vPos.x);
+
+	double distFit = m_cxClient - DistFromPad;
+
+	//calculate speed of lander
+	double speed = sqrt((m_vVelocity.x*m_vVelocity.x)
+		+ (m_vVelocity.y*m_vVelocity.y));
+
+	//fitness due to rotation
+	double rotFit = 1 / (fabs(m_dRotation) + 1);
+
+	//fitness due to time in air
+	double fitAirTime = (double)m_cTick / (speed + 1);
+
+	//calculate fitness
+	m_dFitness = distFit + 400 * rotFit + 4 * fitAirTime;
+
+	//check if we have a successful landing
+	if ((DistFromPad < DIST_TOLERANCE) &&
+		(speed < SPEED_TOLERANCE) &&
+		(fabs(m_dRotation) < ROTATION_TOLERANCE))
+	{
+		m_dFitness = BIG_NUMBER;
+	}
+}
 
 //----------------------------- Decode() ---------------------------------
 //  takes a genome an decodes it into its sequence of actions
 //------------------------------------------------------------------------
+//  takes a genome an decodes it into its sequence of actions
+void CLander::Decode(const vector<SGene> &actions)
+{
+	//clear
+	m_vecActions.clear();
+
+	for (int i = 0; i < actions.size(); ++i)
+	{
+		for (int j = 0; j < actions[i].duration; ++j)
+		{
+			m_vecActions.push_back(actions[i].action);
+		}
+	}
+}
 
 //------------------------- Render ---------------------------------------
 //

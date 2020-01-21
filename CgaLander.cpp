@@ -3,6 +3,22 @@
 //----------------------CreateStartPopulation---------------------------
 //
 //-----------------------------------------------------------------------
+void CgaLander::CreateStartPopulation()
+{
+	//clear existing population
+	m_vecPop.clear();
+
+	for (int i = 0; i < m_iPopSize; i++)
+	{
+		m_vecPop.push_back(SGenome(CHROMO_LENGTH));
+	}
+
+	//reset all variables
+	m_iGeneration = 0;
+	m_iFittestGenome = 0;
+	m_dBestFitness = 0;
+	m_dTotalFitness = 0;
+}
 
 
 //-------------------------GrabNBest----------------------------------
@@ -11,18 +27,78 @@
 //  copies of the NBest most fittest genomes into a population vector
 //--------------------------------------------------------------------
 
+void CgaLander::GrabNBest(int            NBest,
+	const int      NumCopies,
+	vector<SGenome>&vecPop)
+{
+	//add the required amount of copies of the n most fittest 
+	//to the supplied vector
+	while (NBest--)
+	{
+		for (int i = 0; i < NumCopies; ++i)
+		{
+			vecPop.push_back(m_vecPop[(m_iPopSize - 1) - NBest]);
+		}
+	}
+}
 
 //--------------------------RouletteWheelSelection-----------------
 //
 //	selects a member of the population by using roulette wheel 
 //	selection as described in the text.
 //------------------------------------------------------------------
+SGenome& CgaLander::RouletteWheelSelection()
+{
+	double fSlice = RandFloat() * m_dTotalFitness;
+
+	double cfTotal = 0.0;
+
+	int SelectedGenome = 0;
+
+	for (int i = 0; i < m_iPopSize; ++i)
+	{
+
+		cfTotal += m_vecPop[i].dFitness;
+
+		if (cfTotal > fSlice)
+		{
+			SelectedGenome = i;
+
+			break;
+		}
+	}
+
+	return m_vecPop[SelectedGenome];
+}
 
 
 //----------------------------Mutate---------------------------------
 //
 //--------------------------------------------------------------------
 
+void CgaLander::Mutate(vector<SGene> &vecActions)
+{
+
+	for (int gene = 0; gene < vecActions.size(); ++gene)
+	{
+		//do we mutate the action?
+		if (RandFloat() < m_dMutationRate)
+		{
+			vecActions[gene].action = (action_type)RandInt(0, 3);
+
+		}
+
+		//do we mutate the duration?
+		if (RandFloat() < m_dMutationRate / 2)
+		{
+			vecActions[gene].duration += RandomClamped()*MAX_MUTATION_DURATION;
+
+			//clamp the duration
+			Clamp(vecActions[gene].duration, 0, MAX_ACTION_DURATION);
+		}
+
+	}//next gene
+}
 
 
 //--------------------------- CrossoverMulti -----------------------------
@@ -32,6 +108,43 @@
 //  a swap rate and iterate through each chromosome swap over individual
 //  genes where appropriate. 
 //-------------------------------------------------------------------------
+void CgaLander::CrossoverMulti(const vector<SGene> &mum,
+	const vector<SGene> &dad,
+	vector<SGene>       &baby1,
+	vector<SGene>     &baby2)
+{
+	//just return parents as offspring dependent on the rate
+  //or if parents are the same
+	if ((RandFloat() > m_dCrossoverRate) || (mum == dad))
+	{
+		baby1 = mum;
+		baby2 = dad;
+
+		return;
+	}
+
+	//first determine a swapping rate for this chromosome
+	float SwapRate = RandFloat()*CHROMO_LENGTH;
+
+	for (int gene = 0; gene < mum.size(); ++gene)
+	{
+		if (RandFloat() < SwapRate)
+		{
+			//switch the genes at this point
+			baby1.push_back(dad[gene]);
+			baby2.push_back(mum[gene]);
+
+		}
+
+		else
+		{
+			//just copy into offspring 
+			baby1.push_back(mum[gene]);
+			baby2.push_back(dad[gene]);
+		}
+	}//next gene
+}
+
 
 
 //------------------------------ UpdatePop -----------------------------
